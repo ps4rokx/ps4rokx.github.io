@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+   <title>PSFreel-Lapse Extra Payload</title>
+   <style>
+      body {
+         background-color: #000;
+         color: #0f0;
+         font-family: 'Courier New', monospace;
+         margin: 0;
+         padding: 20px;
+         text-align: center;
+      }
+
+      h2 {
+         text-shadow: 0 0 5px #0f0;
+         margin-bottom: 20px;
+      }
+
+      #progress {
+         text-shadow: 0 0 5px #0f0;
+         margin-bottom: 20px;
+      }
+
+      .container {
+         border: 1px solid #0f0;
+         box-shadow: 0 0 10px #0f0;
+         background-color: #111;
+         padding: 20px;
+         width: 90%;
+         max-width: 1000px;
+         margin: 20px auto;
+         text-align: center;
+         animation: glow 2s infinite;
+      }
+
+      @keyframes glow {
+         0%   { box-shadow: 0 0 5px #0f0; }
+         50%  { box-shadow: 0 0 20px #0f0; }
+         100% { box-shadow: 0 0 5px #0f0; }
+      }
+
+      .button {
+         background-color: #111;
+         border: 2px solid #0f0;
+         color: #0f0;
+         padding: 10px 15px;
+         font-family: 'Courier New', monospace;
+         font-size: 16px;
+         cursor: pointer;
+         box-shadow: 0 0 5px #0f0;
+         transition: background-color 0.3s, color 0.3s;
+         border-radius: 5px;
+         margin: 5px;
+         width: 200px;
+         text-decoration: none;
+      }
+
+      .button:hover {
+         background-color: #0f0;
+         color: #000;
+         box-shadow: 0 0 20px #0f0;
+      }
+
+      #tempC {
+         background-color: #111;
+         border: 2px solid #0f0;
+         color: #0f0;
+         font-family: 'Courier New', monospace;
+         font-size: 16px;
+         padding: 5px;
+         margin: 5px;
+         box-shadow: 0 0 5px #0f0;
+      }
+
+      option {
+         background-color: #000;
+         color: #0f0;
+      }
+   </style>
+   <script src="./bzip.js"></script>
+   <script>
+      const payloadFiles = {
+         ps4debug: "ps4debug.bin",
+         permanentuart: "permanentuart.bin",
+         app2usb: "app2usb.bin",
+         backupdb: "backupdb.bin",
+         pkgb: "pkg-backup.bin",
+         dumperG: "DumperG.bin",
+         dumperU: "DumperU.bin",
+         dumperMGU: "DumperMGU.bin",
+         dumperSGU: "DumperSGU.bin",
+         kernelDumper: "kerneldumper.bin",
+         moduleDumper: "mdumper.bin",
+         restoredb: "restoredb.bin",
+         disableASLR: "disableaslr.bin",
+         disableUpdates: "disableupdates.bin",
+         enableUpdates: "enableupdates.bin",
+         enableBrowser: "enablebrowser.bin",
+         exitIDU: "exitidu.bin",
+         ftp: "ftp.bin",
+         historyBlocker: "historyblocker.bin",
+         rifRenamer: "rifrenamer.bin",
+         orbis: "Orbis-Toolbox-900.bin",
+         toDexEnable: "todex-enable.bin",
+         toDexDisable: "todex-disable.bin",
+         webRTE: "WebRTE.bin",
+		 fan40: "fan50.bin",
+		 fan45: "fan55.bin",
+		 fan50: "fan50.bin",
+		 fan55: "fan55.bin",
+		 fan60: "fan60.bin",
+		 fan65: "fan65.bin",
+		 fan70: "fan70.bin",
+		 fan75: "fan75.bin",
+      };
+
+      function getPayload(payload, onLoadEndCallback) {
+         const req = new XMLHttpRequest();
+         req.open("GET", payload);
+         req.responseType = "arraybuffer";
+         req.onload = (event) => onLoadEndCallback && onLoadEndCallback(req, event);
+         req.send();
+      }
+
+      function sendPayload(url, data, onLoadEndCallback) {
+         const req = new XMLHttpRequest();
+         req.open("POST", url, true);
+         req.onload = (event) => onLoadEndCallback && onLoadEndCallback(req, event);
+         req.send(data);
+      }
+
+      function loadPayload(file) {
+         const statusUrl = "http://127.0.0.1:9090/status";
+         const payloadUrl = "http://127.0.0.1:9090";
+         const req = new XMLHttpRequest();
+         req.open("POST", statusUrl);
+         req.onerror = () => alert("Cannot Load Payload Because The BinLoader Server Is Not Running");
+         req.onload = () => {
+            const responseJson = JSON.parse(req.responseText);
+            if (responseJson.status === "ready") {
+               getPayload(file, (req) => {
+                  if ((req.status === 200 || req.status === 304) && req.response) {
+                     sendPayload(payloadUrl, req.response, (req) => {
+                        progress.innerHTML = req.status === 200 ? "Payload Loaded" : "Cannot send payload";
+                     });
+                  }
+               });
+            } else {
+               alert("Cannot Load Payload Because The BinLoader Server Is Busy");
+            }
+         };
+         req.send();
+      }
+
+      function loadPayloadBZ2(file) {
+         const statusUrl = "http://127.0.0.1:9090/status";
+         const payloadUrl = "http://127.0.0.1:9090";
+         var req = new XMLHttpRequest();
+         req.open("POST", statusUrl);
+         req.onerror = () =>
+            alert("Cannot Load Payload Because The BinLoader Server Is Not Running");
+         req.onload = () => {
+            var responseJson = JSON.parse(req.responseText);
+            if (responseJson.status == "ready") {
+               getPayload(file, (req) => {
+                  if ((req.status === 200 || req.status === 304) && req.response) {
+                     let payloadData = new Uint8Array(req.response);
+                     try {
+                        payloadData = bzip2.simple(bzip2.array(payloadData));
+                     } catch (error) {
+                        throw error;
+                     }
+                     sendPayload(payloadUrl, payloadData.buffer, (req) => {
+                        progress.innerHTML =
+                           req.status === 200 ? "Payload Loaded" : "Cannot send payload";
+                     });
+                  }
+               });
+            } else {
+               alert("Cannot Load Payload Because The BinLoader Server Is Busy");
+               return;
+            }
+         };
+         req.send();
+      }
+
+      function loadFanControl() {
+         progress.innerHTML = "Fan Control loading... please wait";
+         loadPayload(`fan${tempC.value}.bin`);
+      }
+
+      function showMenu(menu) {
+         all.style.display = "none";
+         Dumpers.style.display = "none";
+         Tools.style.display = "none";
+         menu.style.display = "block";
+      }
+
+      function backToMainMenu() {
+         all.style.display = "block";
+         Dumpers.style.display = "none";
+         Tools.style.display = "none";
+      }
+
+      function setTemperatureOptions() {
+         const select = document.getElementById("tempC");
+         for (let i = 40; i <= 75; i += 5) {
+            const option = document.createElement("option");
+            option.text = i;
+            option.value = i;
+            select.add(option);
+         }
+         select.value = 60;
+         localStorage.setItem("fanthreshold", select.value);
+      }
+
+      document.addEventListener("DOMContentLoaded", setTemperatureOptions);
+   </script>
+</head>
+
+<body>
+      <h2>★ PSFree-Lapse Extra Payload ★</h2><br>
+      <h4 id="progress">Status</h4>
+   <div class="container">
+
+      <div id="all">
+         <button class="button" onmouseover="progress.innerHTML='WebRTE for PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.webRTE)">
+            WebRTE
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='ps4debug for PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.ps4debug)">
+            PS4Debug
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Orbis Toolbox Loader Alfa 1190 for PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.orbis)">
+            Orbis Toolbox
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='A full access FTP server for the PS4'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.ftp)">
+            FTP
+         </button>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='Move installed games to an external USB drive'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.app2usb)">
+            App2USB
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Unlocks some debug features available on testkit'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.toDexEnable)">
+            ToDex Enable
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Disable ToDEX'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.toDexDisable)">
+            ToDex Disable
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Creates dummy files in the PS4 update folder'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.disableUpdates)">
+            Disable Updates
+         </button>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='Removes the dummy files in the PS4 update folder'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.enableUpdates)">
+            Enable Updates
+         </button>
+         <button class="button"
+            onmouseover="progress.innerHTML='Disable the auto opening of the last page used in the PS4 WebBrowser'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.historyBlocker)">
+            History Blocker
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Enable Browser'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.enableBrowser)">
+            Enable Browser
+         </button>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='All Dumper payloads'"
+            onmouseout="progress.innerHTML='Status'" onclick="showMenu(Dumpers)">
+            Dumper Group
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='PS4 Tools payloads'"
+            onmouseout="progress.innerHTML='Status'" onclick="showMenu(Tools)">
+            PS4 Tools
+         </button>
+         <br />
+         <br />
+         <button class="button" onclick="window.location.href = './index.html'" onmouseover="progress.innerHTML='Move back to PSFree-Lapse Auto Exploit FW 9.00'" onmouseout="progress.innerHTML='Status'">Back</button>
+         
+      </div>
+      <div id="Dumpers" style="display: none;">
+         <button class="button" onmouseover="progress.innerHTML='Original Payload by xvortex PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.dumperU)">
+            Dumper U
+         </button>
+         <button class="button"
+            onmouseover="progress.innerHTML='Original Payload by xvortex + Modular Dumper by Storm21 PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.dumperMGU)">
+            Dumper MGU
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='PS4 System File Dumper by Ludvikus1 PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.dumperSGU)">
+            Dumper SGU
+         </button>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='PS4 Kernel Dumper by zecoxao PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.kernelDumper)">
+            Kernel Dumper
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='PS4 Module Dumper by Golden PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.moduleDumper)">
+            Module Dumper
+         </button>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='Move back to main menu'"
+            onmouseout="progress.innerHTML='Status'" onclick="backToMainMenu()">
+            Back
+         </button>
+      </div>
+      <div id="Tools" style="display: none;">
+         <button class="button"
+            onmouseover="progress.innerHTML='Disable Address Space Layout Randomization by pearlxcore PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.disableASLR)">
+            Disable ASLR
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Enable UART for PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.permanentuart)">
+            Permanent UART
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='Exit IDU mode on PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.exitIDU)">
+            Exit IDU
+         </button>
+         <button class="button" onmouseover="progress.innerHTML='RIF Renamer by pearlxcore PS4 9.00 fw'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadPayload(payloadFiles.rifRenamer)">
+            RIF Renamer
+         </button>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='Set the temperature at the PS4 fan starts'"
+            onmouseout="progress.innerHTML='Status'" onclick="loadFanControl()"> Fan
+            Control </button>
+         <select id="tempC"></select>
+         <br />
+         <br />
+         <button class="button" onmouseover="progress.innerHTML='Move back to main menu'"
+            onmouseout="progress.innerHTML='Status'" onclick="backToMainMenu()">
+            Back
+         </button>
+      </div>
+   </div>
+   <h4>By.Oresterosso-TeamItalianModder</h4>
+</body>
+
+</html>
